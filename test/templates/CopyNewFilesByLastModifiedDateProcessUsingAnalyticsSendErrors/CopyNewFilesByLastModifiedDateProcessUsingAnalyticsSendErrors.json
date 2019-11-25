@@ -1,0 +1,245 @@
+{
+	"$schema": "http://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+	"contentVersion": "1.0.0.0",
+	"parameters": {
+		"factoryName": {
+			"type": "string",
+			"metadata": "Data Factory name"
+		},
+		"AmazonS31": {
+			"type": "string"
+		},
+		"AzureDataLakeStore1": {
+			"type": "string"
+		}
+	},
+	"variables": {
+		"factoryId": "[concat('Microsoft.DataFactory/factories/', parameters('factoryName'))]"
+	},
+	"resources": [
+		{
+			"name": "[concat(parameters('factoryName'), '/CopyNewFilesByLastModifiedDate')]",
+			"type": "Microsoft.DataFactory/factories/pipelines",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Copy new and changed files only by using LastModifiedDate",
+				"activities": [
+					{
+						"name": "Copy New Files by Date",
+						"description": "Copy new and changed files only by using LastModifiedDate",
+						"type": "Copy",
+						"dependsOn": [],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"source": {
+								"type": "FileSystemSource",
+								"recursive": true
+							},
+							"sink": {
+								"type": "AzureDataLakeStoreSink"
+							},
+							"enableStaging": false
+						},
+						"inputs": [
+							{
+								"referenceName": "AmazonS3DataSourceStore",
+								"type": "DatasetReference",
+								"parameters": {
+									"FolderPath": {
+										"value": "@pipeline().parameters.FolderPath_Source",
+										"type": "Expression"
+									},
+									"LastModified_From": {
+										"value": "@pipeline().parameters.LastModified_From",
+										"type": "Expression"
+									},
+									"LastModified_To": {
+										"value": "@pipeline().parameters.LastModified_To",
+										"type": "Expression"
+									}
+								}
+							}
+						],
+						"outputs": [
+							{
+								"referenceName": "AzureDataLakeStoreDataDestinationStore",
+								"type": "DatasetReference",
+								"parameters": {
+									"FolderPath": {
+										"value": "@pipeline().parameters.FolderPath_Destination",
+										"type": "Expression"
+									}
+								}
+							}
+						]
+					},
+					{
+						"name": "Execute U-SQL Scripts for Processing",
+						"type": "DataLakeAnalyticsU-SQL",
+						"dependsOn": [
+							{
+								"activity": "Copy New Files by Date",
+								"dependencyConditions": [
+									"Succeeded"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": [],
+						"typeProperties": {
+							"scriptPath": ""
+						}
+					},
+					{
+						"name": "Send Email on Copy Erros",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "Copy New Files by Date",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": []
+					},
+					{
+						"name": "Send Email on Data Processing Errors",
+						"type": "WebActivity",
+						"dependsOn": [
+							{
+								"activity": "Execute U-SQL Scripts for Processing",
+								"dependencyConditions": [
+									"Failed"
+								]
+							}
+						],
+						"policy": {
+							"timeout": "7.00:00:00",
+							"retry": 0,
+							"retryIntervalInSeconds": 30,
+							"secureOutput": false,
+							"secureInput": false
+						},
+						"userProperties": []
+					}
+				],
+				"parameters": {
+					"FolderPath_Source": {
+						"type": "String",
+						"defaultValue": "/<myfolder>/<sub_folder>/"
+					},
+					"FolderPath_Destination": {
+						"type": "String",
+						"defaultValue": "/<myfolder>/<sub_folder>/"
+					},
+					"LastModified_From": {
+						"type": "String",
+						"defaultValue": "2019-02-01T00:00:00Z"
+					},
+					"LastModified_To": {
+						"type": "String",
+						"defaultValue": "2019-03-01T00:00:00Z"
+					}
+				},
+				"annotations": []
+			},
+			"dependsOn": [
+				"[concat(variables('factoryId'), '/datasets/AmazonS3DataSourceStore')]",
+				"[concat(variables('factoryId'), '/datasets/AzureDataLakeStoreDataDestinationStore')]"
+			]
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AmazonS3DataSourceStore')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Connection to your data source store.  ",
+				"linkedServiceName": {
+					"referenceName": "[parameters('AmazonS31')]",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"FolderPath": {
+						"type": "String"
+					},
+					"LastModified_From": {
+						"type": "String"
+					},
+					"LastModified_To": {
+						"type": "String"
+					}
+				},
+				"annotations": [],
+				"type": "AmazonS3Object",
+				"typeProperties": {
+					"key": "*",
+					"bucketName": {
+						"value": "@dataset().FolderPath",
+						"type": "Expression"
+					},
+					"modifiedDatetimeStart": {
+						"value": "@dataset().LastModified_From",
+						"type": "Expression"
+					},
+					"modifiedDatetimeEnd": {
+						"value": "@dataset().LastModified_To",
+						"type": "Expression"
+					},
+					"fileName": "*",
+					"folderPath": {
+						"value": "@dataset().FolderPath",
+						"type": "Expression"
+					}
+				}
+			},
+			"dependsOn": []
+		},
+		{
+			"name": "[concat(parameters('factoryName'), '/AzureDataLakeStoreDataDestinationStore')]",
+			"type": "Microsoft.DataFactory/factories/datasets",
+			"apiVersion": "2018-06-01",
+			"properties": {
+				"description": "Connection to your data destination store.  ",
+				"linkedServiceName": {
+					"referenceName": "[parameters('AzureDataLakeStore1')]",
+					"type": "LinkedServiceReference"
+				},
+				"parameters": {
+					"FolderPath": {
+						"type": "String"
+					}
+				},
+				"annotations": [],
+				"type": "AzureDataLakeStoreFile",
+				"typeProperties": {
+					"folderPath": {
+						"value": "@dataset().FolderPath",
+						"type": "Expression"
+					}
+				}
+			},
+			"dependsOn": []
+		}
+	]
+}
