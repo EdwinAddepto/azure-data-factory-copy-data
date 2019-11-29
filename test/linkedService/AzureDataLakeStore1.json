@@ -1,0 +1,13 @@
+{
+	"name": "AzureDataLakeStore1",
+	"properties": {
+		"annotations": [],
+		"type": "AzureDataLakeStore",
+		"typeProperties": {
+			"dataLakeStoreUri": "https://addeptodlsdemo.azuredatalakestore.net/webhdfs/v1",
+			"tenant": "42f32f4f-25eb-4a62-8b1f-4e4d7bbbf756",
+			"subscriptionId": "b620edce-8b4f-4ff7-8f24-de3d585db13b",
+			"resourceGroupName": "addepto"
+		}
+	}
+}
