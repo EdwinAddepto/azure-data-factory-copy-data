@@ -1,0 +1,40 @@
+{
+	"name": "ADLSink",
+	"properties": {
+		"linkedServiceName": {
+			"referenceName": "AzureDataLakeLinkedService",
+			"type": "LinkedServiceReference"
+		},
+		"annotations": [],
+		"type": "DelimitedText",
+		"typeProperties": {
+			"location": {
+				"type": "AzureDataLakeStoreLocation",
+				"folderPath": "Samples/Data/US-GB-YouTubeStatistics"
+			},
+			"columnDelimiter": ",",
+			"escapeChar": "\\",
+			"firstRowAsHeader": true,
+			"quoteChar": "\""
+		},
+		"schema": [
+			{
+				"name": "video_id",
+				"type": "String"
+			},
+			{
+				"name": "comment_text",
+				"type": "String"
+			},
+			{
+				"name": "likes",
+				"type": "String"
+			},
+			{
+				"name": "replies",
+				"type": "String"
+			}
+		]
+	},
+	"type": "Microsoft.DataFactory/factories/datasets"
+}
