@@ -1,0 +1,66 @@
+{
+	"name": "2-Schematize",
+	"properties": {
+		"activities": [
+			{
+				"name": "Get-Table-Metadata",
+				"type": "GetMetadata",
+				"dependsOn": [],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"fieldList": [
+						"structure"
+					]
+				}
+			},
+			{
+				"name": "Stage-Data",
+				"type": "Copy",
+				"dependsOn": [
+					{
+						"activity": "Get-Table-Metadata",
+						"dependencyConditions": [
+							"Succeeded"
+						]
+					}
+				],
+				"policy": {
+					"timeout": "7.00:00:00",
+					"retry": 0,
+					"retryIntervalInSeconds": 30,
+					"secureOutput": false,
+					"secureInput": false
+				},
+				"userProperties": [],
+				"typeProperties": {
+					"source": {
+						"type": "AzureBlobFSSource",
+						"recursive": true
+					},
+					"sink": {
+						"type": "SqlSink",
+						"writeBatchSize": 10000,
+						"preCopyScript": {
+							"value": "@{concat('TRUNCATE TABLE [datahub].[',pipeline().parameters.EntityName,']')}",
+							"type": "Expression"
+						}
+					},
+					"enableStaging": false
+				}
+			}
+		],
+		"parameters": {
+			"EntityName": {
+				"type": "String"
+			}
+		},
+		"annotations": []
+	}
+}
